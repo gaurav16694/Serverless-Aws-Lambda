@@ -1,0 +1,83 @@
+service: lambda-rest-api
+
+plugins:
+  - serverless-dynamodb-local
+  - serverless-offline
+
+custom:
+  SocialMap: 'SocialMap-${self:provider.stage}'
+  Score: 'Score-${self:provider.stage}'
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: dev
+  region: us-east-2
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { "Fn::GetAtt": ["SocialMapDynamoDBTable", "Arn" ] }
+        - { "Fn::GetAtt": ["ScoreDynamoDBTable", "Arn" ] }
+  environment:
+    SocialMapTABLE: ${self:custom.SocialMap}
+    ScoreTABLE: ${self:custom.Score}
+
+
+functions:
+  Game-App:
+    handler: index.handler
+    events:
+      - http: ANY /
+      - http: 'ANY {proxy+}'
+
+resources:
+  Resources:
+    SocialMapDynamoDBTable:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: GameId
+            AttributeType: S
+          -
+            AttributeName: SocialId
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: GameId
+            KeyType: HASH
+          -
+            AttributeName: SocialId
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.SocialMap}
+    ScoreDynamoDBTable:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: GameIdxUserId
+            AttributeType: S
+          -
+            AttributeName: Level
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: GameIdxUserId
+            KeyType: HASH
+          -
+            AttributeName: Level
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.Score}
